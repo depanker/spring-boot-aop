@@ -29,21 +29,22 @@ jobs:
           echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT_VERSION"
       
-      - name: Get latest Spring Boot minor version
+      - name: Get latest Spring Boot version (same major)
         id: latest-version
         run: |
           CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
-          MAJOR_MINOR=$(echo $CURRENT_VERSION | cut -d. -f1,2)
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
           
           # Fetch latest versions from Maven Central
-          LATEST_VERSION=$(curl -s "https://search.maven.org/solrsearch/select?q=g:org.springframework.boot+AND+a:spring-boot-starter-parent&rows=20&wt=json" | \
+          LATEST_VERSION=$(curl -s "https://search.maven.org/solrsearch/select?q=g:org.springframework.boot+AND+a:spring-boot-starter-parent&rows=50&wt=json" | \
             jq -r '.response.docs[].v' | \
-            grep "^${MAJOR_MINOR}\." | \
+            grep "^${MAJOR}\." | \
+            grep -v -E '(SNAPSHOT|M[0-9]|RC[0-9])' | \
             sort -V | \
             tail -1)
           
           echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest minor version: $LATEST_VERSION"
+          echo "Latest version (major $MAJOR): $LATEST_VERSION"
       
       - name: Check if update is needed
         id: check-update
@@ -80,13 +81,14 @@ jobs:
           body: |
             ## Spring Boot Update
             
-            This PR updates `spring-boot-starter-parent` to the latest minor version.
+            This PR updates `spring-boot-starter-parent` to the latest version within the same major release.
             
             - **Current version:** ${{ steps.current-version.outputs.current }}
             - **New version:** ${{ steps.latest-version.outputs.latest }}
             
             ### Changes
             - Updated `spring-boot-starter-parent` version in `pom.xml`
+            - Includes minor and patch version updates
             
             ### Testing
             Please review the changes and run tests before merging.
@@ -100,4 +102,4 @@ jobs:
       
       - name: No update needed
         if: steps.check-update.outputs.needs_update == 'false'
-        run: echo "Spring Boot is already at the latest minor version"
+        run: echo "Spring Boot is already at the latest version for the current major release"
