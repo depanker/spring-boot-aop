@@ -8,8 +8,6 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     target-branch: "main"
-    # Update strategy for version updates
-    versioning-strategy: increase
     # Groups for Spring Boot dependencies
     groups:
       spring-boot:
@@ -33,7 +31,3 @@ updates:
     #   - "your-github-username"
     # assignees:
     #   - "your-github-username"
-    # Custom pull request branch name
-    pull-request-branch-name:
-      separator: "-"
-      prefix: "DS1"
