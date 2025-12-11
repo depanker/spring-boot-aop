@@ -5,9 +5,9 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "17:16"
+      time: "17:18"
     open-pull-requests-limit: 5
-    target-branch: "main"
+    target-branch: "master"
     groups:
       spring-boot:
         patterns:
