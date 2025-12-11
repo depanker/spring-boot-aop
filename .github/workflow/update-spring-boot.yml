@@ -1,0 +1,103 @@
+name: Update Spring Boot to Latest Minor Version
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-spring-boot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Get current Spring Boot version
+        id: current-version
+        run: |
+          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.parent.version -q -DforceStdout)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Get latest Spring Boot minor version
+        id: latest-version
+        run: |
+          CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
+          MAJOR_MINOR=$(echo $CURRENT_VERSION | cut -d. -f1,2)
+          
+          # Fetch latest versions from Maven Central
+          LATEST_VERSION=$(curl -s "https://search.maven.org/solrsearch/select?q=g:org.springframework.boot+AND+a:spring-boot-starter-parent&rows=20&wt=json" | \
+            jq -r '.response.docs[].v' | \
+            grep "^${MAJOR_MINOR}\." | \
+            sort -V | \
+            tail -1)
+          
+          echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "Latest minor version: $LATEST_VERSION"
+
+      - name: Check if update is needed
+        id: check-update
+        run: |
+          CURRENT="${{ steps.current-version.outputs.current }}"
+          LATEST="${{ steps.latest-version.outputs.latest }}"
+          
+          if [ "$CURRENT" = "$LATEST" ]; then
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "Already on latest version: $CURRENT"
+          else
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "Update available: $CURRENT -> $LATEST"
+          fi
+
+      - name: Update pom.xml
+        if: steps.check-update.outputs.needs_update == 'true'
+        run: |
+          LATEST_VERSION="${{ steps.latest-version.outputs.latest }}"
+          
+          # Update parent version in pom.xml
+          mvn versions:update-parent -DparentVersion="[$LATEST_VERSION]" -DgenerateBackupPoms=false
+
+      - name: Create Pull Request
+        if: steps.check-update.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: DS1-spring-update
+          delete-branch: false
+          base: main
+          commit-message: "chore: update Spring Boot to ${{ steps.latest-version.outputs.latest }}"
+          title: "Update Spring Boot from ${{ steps.current-version.outputs.current }} to ${{ steps.latest-version.outputs.latest }}"
+          body: |
+            ## Spring Boot Update
+            
+            This PR updates `spring-boot-starter-parent` to the latest minor version.
+            
+            - **Current version:** ${{ steps.current-version.outputs.current }}
+            - **New version:** ${{ steps.latest-version.outputs.latest }}
+            
+            ### Changes
+            - Updated `spring-boot-starter-parent` version in `pom.xml`
+            
+            ### Testing
+            Please review the changes and run tests before merging.
+            
+            ---
+            *This PR was automatically created by GitHub Actions*
+          labels: |
+            dependencies
+            spring-boot
+            automated
+
+      - name: No update needed
+        if: steps.check-update.outputs.needs_update == 'false'
+        run: echo "Spring Boot is already at the latest minor version"
