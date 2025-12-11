@@ -5,11 +5,9 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "17:12"
+      time: "17:16"
     open-pull-requests-limit: 5
     target-branch: "main"
-    branch-name: "DS1-spring-update-{new-version}"
-    # Groups for Spring Boot dependencies
     groups:
       spring-boot:
         patterns:
@@ -17,18 +15,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Labels for the PRs
     labels:
       - "dependencies"
       - "spring-boot"
       - "automated"
-    # Commit message prefix
     commit-message:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
-    # Reviewers (optional - add your team members)
-    # reviewers:
-    #   - "your-github-username"
-    # assignees:
-    #   - "your-github-username"
