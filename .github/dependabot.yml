@@ -8,6 +8,10 @@ updates:
       time: "17:18"
     open-pull-requests-limit: 5
     target-branch: "master"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "major"
     groups:
       spring-boot:
         patterns:
