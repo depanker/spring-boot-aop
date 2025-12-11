@@ -26,13 +26,13 @@ jobs:
         id: current-version
         run: |
           CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.parent.version -q -DforceStdout)
-          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT_VERSION" >> $GITHUB_ENV
           echo "Current version: $CURRENT_VERSION"
       
       - name: Get latest Spring Boot version (same major)
         id: latest-version
         run: |
-          CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
+          CURRENT="${{ steps.current-version.outputs.current }}"
           # Extract major version (handles both 1.5.x.RELEASE and 3.2.x formats)
           MAJOR=$(echo $CURRENT_VERSION | sed 's/\.RELEASE$//' | cut -d. -f1)
           
