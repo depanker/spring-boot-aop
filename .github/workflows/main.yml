@@ -1,60 +1,57 @@
-- name: Get latest Spring Boot version (same major)
+name: Update Spring Boot to Latest Minor Version
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-spring-boot:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Get current Spring Boot version
+        id: current-version
+        run: |
+          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.parent.version -q -DforceStdout)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+      
+      - name: Get latest Spring Boot version (same major)
         id: latest-version
         run: |
           CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
           # Extract major version (handles both 1.5.x.RELEASE and 3.2.x formats)
           MAJOR=$(echo $CURRENT_VERSION | sed 's/\.RELEASE$//' | cut -d. -f1)
           
+          echo "Current version: $CURRENT_VERSION"
           echo "Searching for versions with major version: $MAJOR"
           
-          # Fetch latest versions from Maven Central
-          LATEST_VERSION=$(curl -s "https://search.maven.org/solrsearch/select?q=g:org.springframework.boot+AND+a:spring-boot-starter-parent&rows=100&wt=json" | \
-            jq -r '.response.docs[].v' | \
-            grep "^${MAJOR}\." | \
-            grep -E '\.(RELEASE|BUILD-SNAPSHOT)$|^[0-9]+\.[0-9]+\.[0-9]+name: Update Spring Boot to Latest Minor Version
-
-on:
-  schedule:
-    # Run every Monday at 9:00 AM UTC
-    - cron: '0 9 * * 1'
-  workflow_dispatch: # Allow manual trigger
-
-jobs:
-  update-spring-boot:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      
-      - name: Get current Spring Boot version
-        id: current-version
-        run: |
-          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.parent.version -q -DforceStdout)
-          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $CURRENT_VERSION"
-      
-      - name: Get latest Spring Boot version (same major)
-        id: latest-version
-        run: |
-          CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
-          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
-          
-          # Fetch latest versions from Maven Central
-          LATEST_VERSION=$(curl -s "https://search.maven.org/solrsearch/select?q=g:org.springframework.boot+AND+a:spring-boot-starter-parent&rows=50&wt=json" | \
-            jq -r '.response.docs[].v' | \
+          # Fetch all versions from Maven Central using the versions API
+          LATEST_VERSION=$(curl -s "https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-parent/maven-metadata.xml" | \
+            grep '<version>' | \
+            sed 's/<version>//g' | sed 's/<\/version>//g' | sed 's/^[ \t]*//' | \
             grep "^${MAJOR}\." | \
             grep -v -E '(SNAPSHOT|M[0-9]|RC[0-9])' | \
             sort -V | \
             tail -1)
+          
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Error: Could not find any versions for major version $MAJOR"
+            exit 1
+          fi
           
           echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
           echo "Latest version (major $MAJOR): $LATEST_VERSION"
@@ -94,124 +91,14 @@ jobs:
           body: |
             ## Spring Boot Update
             
-            This PR updates `spring-boot-starter-parent` to the latest version within the same major release.
+            This PR updates `spring-boot-starter-parent` to the latest minor/patch version.
             
             - **Current version:** ${{ steps.current-version.outputs.current }}
             - **New version:** ${{ steps.latest-version.outputs.latest }}
             
             ### Changes
             - Updated `spring-boot-starter-parent` version in `pom.xml`
-            - Includes minor and patch version updates
-            
-            ### Testing
-            Please review the changes and run tests before merging.
-            
-            ---
-            *This PR was automatically created by GitHub Actions*
-          labels: |
-            dependencies
-            spring-boot
-            automated
-      
-      - name: No update needed
-        if: steps.check-update.outputs.needs_update == 'false'
-        run: echo "Spring Boot is already at the latest version for the current major release" | \
-            grep -v -E '(M[0-9]|RC[0-9]|BUILD-SNAPSHOT)' | \
-            sort -V | \
-            tail -1)
-          
-          echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest version (major $MAJOR): $LATEST_VERSION"name: Update Spring Boot to Latest Minor Version
-
-on:
-  schedule:
-    # Run every Monday at 9:00 AM UTC
-    - cron: '0 9 * * 1'
-  workflow_dispatch: # Allow manual trigger
-
-jobs:
-  update-spring-boot:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      
-      - name: Get current Spring Boot version
-        id: current-version
-        run: |
-          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.parent.version -q -DforceStdout)
-          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $CURRENT_VERSION"
-      
-      - name: Get latest Spring Boot version (same major)
-        id: latest-version
-        run: |
-          CURRENT_VERSION="${{ steps.current-version.outputs.current }}"
-          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
-          
-          # Fetch latest versions from Maven Central
-          LATEST_VERSION=$(curl -s "https://search.maven.org/solrsearch/select?q=g:org.springframework.boot+AND+a:spring-boot-starter-parent&rows=50&wt=json" | \
-            jq -r '.response.docs[].v' | \
-            grep "^${MAJOR}\." | \
-            grep -v -E '(SNAPSHOT|M[0-9]|RC[0-9])' | \
-            sort -V | \
-            tail -1)
-          
-          echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
-          echo "Latest version (major $MAJOR): $LATEST_VERSION"
-      
-      - name: Check if update is needed
-        id: check-update
-        run: |
-          CURRENT="${{ steps.current-version.outputs.current }}"
-          LATEST="${{ steps.latest-version.outputs.latest }}"
-          
-          if [ "$CURRENT" = "$LATEST" ]; then
-            echo "needs_update=false" >> $GITHUB_OUTPUT
-            echo "Already on latest version: $CURRENT"
-          else
-            echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "Update available: $CURRENT -> $LATEST"
-          fi
-      
-      - name: Update pom.xml
-        if: steps.check-update.outputs.needs_update == 'true'
-        run: |
-          LATEST_VERSION="${{ steps.latest-version.outputs.latest }}"
-          
-          # Update parent version in pom.xml
-          mvn versions:update-parent -DparentVersion="[$LATEST_VERSION]" -DgenerateBackupPoms=false
-      
-      - name: Create Pull Request
-        if: steps.check-update.outputs.needs_update == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: DS1-spring-update
-          delete-branch: false
-          base: main
-          commit-message: "chore: update Spring Boot to ${{ steps.latest-version.outputs.latest }}"
-          title: "Update Spring Boot from ${{ steps.current-version.outputs.current }} to ${{ steps.latest-version.outputs.latest }}"
-          body: |
-            ## Spring Boot Update
-            
-            This PR updates `spring-boot-starter-parent` to the latest version within the same major release.
-            
-            - **Current version:** ${{ steps.current-version.outputs.current }}
-            - **New version:** ${{ steps.latest-version.outputs.latest }}
-            
-            ### Changes
-            - Updated `spring-boot-starter-parent` version in `pom.xml`
-            - Includes minor and patch version updates
+            - Minor and patch version updates (same major version)
             
             ### Testing
             Please review the changes and run tests before merging.
