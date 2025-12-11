@@ -5,9 +5,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "17:10"
+      time: "17:12"
     open-pull-requests-limit: 5
     target-branch: "main"
+    branch-name: "DS1-spring-update-{new-version}"
     # Groups for Spring Boot dependencies
     groups:
       spring-boot:
